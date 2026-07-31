@@ -8,18 +8,12 @@
 #   5. Build Windows Electron package
 #   6. Write launch.bat (sets URL, starts exe)
 #   7. Create Desktop shortcut
-#   8. Install Startup shortcut (Windows equivalent of a macOS launch plist) so the app starts on login/boot
+#   8. Install Startup shortcut so the app starts on login
 #   9. Launch the app
 #
 # Usage:
 #   bootstrap-windows.bat
 #   bootstrap-windows.bat "https://override-url"
-#
-# Optional:
-#   -DownloadDir "C:\path\to\Dreams"
-#   -Windowed
-#   -SkipLaunch
-#   -SkipStartup
 
 [CmdletBinding()]
 param(
@@ -45,9 +39,10 @@ param(
 $ErrorActionPreference = "Stop"
 $DefaultKioskUrl = "https://cdn.vixisuite.thefamousgroup.com/go/kiosk/794f74e0?code=uifizkeqdKIMQQUe"
 
-function Write-Step([string]$Message) {
+function Write-Step {
+    param([string]$Message)
     Write-Host ""
-    Write-Host "==> $Message" -ForegroundColor Cyan
+    Write-Host ("==> " + $Message) -ForegroundColor Cyan
 }
 
 function Test-IsAdmin {
@@ -59,30 +54,29 @@ function Test-IsAdmin {
 function Ensure-Admin {
     if (Test-IsAdmin) { return }
 
-    Write-Host "Administrator rights needed to install into $TargetDir" -ForegroundColor Yellow
-    $argsList = @(
-        "-NoProfile"
-        "-ExecutionPolicy", "Bypass"
-        "-File", "`"$PSCommandPath`""
-    )
-    if ($Url) { $argsList += @("-Url", "`"$Url`"") }
-    if ($RepoUrl) { $argsList += @("-RepoUrl", "`"$RepoUrl`"") }
-    if ($TargetDir) { $argsList += @("-TargetDir", "`"$TargetDir`"") }
-    if ($DownloadDir) { $argsList += @("-DownloadDir", "`"$DownloadDir`"") }
-    if ($Windowed) { $argsList += "-Windowed" }
-    if ($SkipLaunch) { $argsList += "-SkipLaunch" }
-    if ($SkipStartup) { $argsList += "-SkipStartup" }
+    Write-Host ("Administrator rights needed to install into " + $TargetDir) -ForegroundColor Yellow
 
-    $process = Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $argsList -Wait -PassThru
+    $argList = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    if ($Url) { $argList += " -Url `"$Url`"" }
+    if ($RepoUrl) { $argList += " -RepoUrl `"$RepoUrl`"" }
+    if ($TargetDir) { $argList += " -TargetDir `"$TargetDir`"" }
+    if ($DownloadDir) { $argList += " -DownloadDir `"$DownloadDir`"" }
+    if ($Windowed) { $argList += " -Windowed" }
+    if ($SkipLaunch) { $argList += " -SkipLaunch" }
+    if ($SkipStartup) { $argList += " -SkipStartup" }
+
+    $process = Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $argList -Wait -PassThru
     exit $process.ExitCode
 }
 
 function Refresh-Path {
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
-                [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $machine = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    $user = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machine;$user"
 }
 
-function Test-Command([string]$Name) {
+function Test-Command {
+    param([string]$Name)
     return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
@@ -108,7 +102,8 @@ function Install-NodeIfNeeded {
     } else {
         $installer = Join-Path $env:TEMP "node-lts.msi"
         Write-Host "winget not available. Downloading Node.js MSI..." -ForegroundColor Yellow
-        Invoke-WebRequest -Uri "https://nodejs.org/dist/v22.17.0/node-v22.17.0-x64.msi" -OutFile $installer
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri "https://nodejs.org/dist/v22.17.0/node-v22.17.0-x64.msi" -OutFile $installer -UseBasicParsing
         Start-Process msiexec.exe -ArgumentList "/i `"$installer`" /qn /norestart" -Wait -Verb RunAs
         Refresh-Path
     }
@@ -119,7 +114,7 @@ function Install-NodeIfNeeded {
 }
 
 function Get-Repo {
-    Write-Step "Getting repo into $TargetDir"
+    Write-Step ("Getting repo into " + $TargetDir)
 
     if (-not (Test-Path $TargetDir)) {
         New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
@@ -142,20 +137,16 @@ function Get-Repo {
         return
     }
 
-    # Empty or unrelated folder: if it has anything unexpected besides our install, still try clone into it
     $existing = @(Get-ChildItem -Force $TargetDir -ErrorAction SilentlyContinue)
     if ($existing.Count -gt 0 -and -not $hasPackage) {
-        throw "Target folder already exists and does not look like this project: $TargetDir"
+        throw ("Target folder already exists and does not look like this project: " + $TargetDir)
     }
 
     if (Install-GitIfNeeded) {
-        Write-Host "Cloning $RepoUrl ..."
-        # clone into temp then move, because git clone won't use a non-empty dir;
-        # our dir may exist empty after New-Item
+        Write-Host ("Cloning " + $RepoUrl + " ...")
         $tmpClone = Join-Path $env:TEMP ("dream-generator-clone-" + [guid]::NewGuid().ToString("N"))
         git clone $RepoUrl $tmpClone
         Copy-Item -Path (Join-Path $tmpClone "*") -Destination $TargetDir -Recurse -Force
-        # include hidden .git
         if (Test-Path (Join-Path $tmpClone ".git")) {
             Copy-Item -Path (Join-Path $tmpClone ".git") -Destination (Join-Path $TargetDir ".git") -Recurse -Force
         }
@@ -169,11 +160,12 @@ function Get-Repo {
     $extractRoot = Join-Path $env:TEMP "electron-print-test-extract"
 
     if (Test-Path $extractRoot) { Remove-Item $extractRoot -Recurse -Force }
-    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
     Expand-Archive -Path $zipPath -DestinationPath $extractRoot -Force
 
     $inner = Get-ChildItem $extractRoot | Select-Object -First 1
-    if (-not $inner) { throw "ZIP extract failed — empty archive." }
+    if (-not $inner) { throw "ZIP extract failed - empty archive." }
 
     Copy-Item -Path (Join-Path $inner.FullName "*") -Destination $TargetDir -Recurse -Force
 }
@@ -183,37 +175,33 @@ function Build-App {
     Push-Location $TargetDir
     try {
         npm install
-        if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw ("npm install failed with exit code " + $LASTEXITCODE) }
 
         Write-Step "Building Windows Electron package"
         npm run build:win
-        if ($LASTEXITCODE -ne 0) { throw "npm run build:win failed with exit code $LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw ("npm run build:win failed with exit code " + $LASTEXITCODE) }
     } finally {
         Pop-Location
     }
 }
 
-function New-LaunchScript([string]$ExePath) {
+function New-LaunchScript {
+    param([string]$ExePath)
+
     $launchBat = Join-Path $TargetDir "launch.bat"
-    $downloadLine = ""
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add("@echo off")
+    $lines.Add("REM Auto-generated by bootstrap-windows.ps1")
+    $lines.Add(('set "URL=' + $Url + '"'))
     if ($DownloadDir) {
-        $downloadLine = "set `"DOWNLOAD_DIR=$DownloadDir`""
+        $lines.Add(('set "DOWNLOAD_DIR=' + $DownloadDir + '"'))
     }
-    $windowedLine = ""
     if ($Windowed) {
-        $windowedLine = "set `"WINDOWED=1`""
+        $lines.Add('set "WINDOWED=1"')
     }
+    $lines.Add(('start "" "' + $ExePath + '"'))
 
-    $content = @"
-@echo off
-REM Auto-generated by bootstrap-windows.ps1
-set "URL=$Url"
-$downloadLine
-$windowedLine
-start "" "$ExePath"
-"@
-
-    Set-Content -Path $launchBat -Value $content -Encoding ASCII
+    Set-Content -Path $launchBat -Value $lines -Encoding ASCII
     return $launchBat
 }
 
@@ -233,59 +221,25 @@ function New-Shortcut {
     $shortcut.Save()
 }
 
-function Install-DesktopShortcut([string]$LaunchBat) {
+function Install-DesktopShortcut {
+    param([string]$LaunchBat)
+
     Write-Step "Creating Desktop shortcut"
     $desktop = [Environment]::GetFolderPath("Desktop")
     $shortcutPath = Join-Path $desktop "Dream Generator.lnk"
     New-Shortcut -ShortcutPath $shortcutPath -TargetPath $LaunchBat -WorkingDirectory $TargetDir -Description "Dream Generator kiosk"
-    Write-Host "Desktop shortcut: $shortcutPath" -ForegroundColor Green
+    Write-Host ("Desktop shortcut: " + $shortcutPath) -ForegroundColor Green
     return $shortcutPath
 }
 
-function Install-StartupShortcut([string]$LaunchBat) {
-    # Windows equivalent of a macOS LaunchAgent plist: start on user login/boot.
+function Install-StartupShortcut {
+    param([string]$LaunchBat)
+
     Write-Step "Installing launch-on-boot (Startup shortcut)"
     $startup = [Environment]::GetFolderPath("Startup")
     $shortcutPath = Join-Path $startup "Dream Generator.lnk"
-    New-Shortcut -ShortcutPath $shortcutPath -TargetPath $LaunchBat -WorkingDirectory $TargetDir -Description "Dream Generator kiosk (auto-start)"
-    Write-Host "Startup shortcut: $shortcutPath" -ForegroundColor Green
-
-    # Also drop a small marker/config next to the app documenting the boot launch.
-    $plistNote = Join-Path $TargetDir "launch-on-boot.plist"
-    $plist = @"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-  macOS LaunchAgent template (not used on Windows).
-  On this Windows PC, boot/login launch is installed as a Startup shortcut:
-  $shortcutPath
-
-  To use this file on macOS instead:
-    1. Replace LABEL/PATH/URL placeholders
-    2. Copy to ~/Library/LaunchAgents/
-    3. launchctl load ~/Library/LaunchAgents/com.olg.dreamgenerator.plist
--->
-<plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>com.olg.dreamgenerator</string>
-    <key>ProgramArguments</key>
-    <array>
-      <string>/Applications/Dream Generator.app/Contents/MacOS/Dream Generator</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>URL</key>
-      <string>$Url</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <false/>
-  </dict>
-</plist>
-"@
-    Set-Content -Path $plistNote -Value $plist -Encoding UTF8
+    New-Shortcut -ShortcutPath $shortcutPath -TargetPath $LaunchBat -WorkingDirectory $TargetDir -Description "Dream Generator kiosk auto-start"
+    Write-Host ("Startup shortcut: " + $shortcutPath) -ForegroundColor Green
     return $shortcutPath
 }
 
@@ -294,7 +248,7 @@ function Install-StartupShortcut([string]$LaunchBat) {
 Ensure-Admin
 
 Write-Host "OLG Electron kiosk bootstrap" -ForegroundColor Cyan
-Write-Host "Target: $TargetDir"
+Write-Host ("Target: " + $TargetDir)
 
 if (-not $Url) {
     $Url = $DefaultKioskUrl
@@ -307,8 +261,8 @@ if ($Windowed) { $env:WINDOWED = "1" }
 Get-Repo
 Install-NodeIfNeeded
 
-Write-Host "Node: $(node -v) | npm: $(npm -v)" -ForegroundColor Green
-Write-Host "URL:  $Url" -ForegroundColor Green
+Write-Host ("Node: " + (node -v) + " | npm: " + (npm -v)) -ForegroundColor Green
+Write-Host ("URL:  " + $Url) -ForegroundColor Green
 
 Build-App
 
@@ -318,7 +272,7 @@ $portable = Get-ChildItem -Path $distDir -Filter "*portable*.exe" -ErrorAction S
     Select-Object -First 1
 
 if (-not $portable) {
-    throw "Build finished but no portable .exe was found in $distDir"
+    throw ("Build finished but no portable .exe was found in " + $distDir)
 }
 
 $rootExe = Join-Path $TargetDir "DreamGenerator.exe"
@@ -334,16 +288,15 @@ if (-not $SkipStartup) {
 
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
-Write-Host "Install folder:     $TargetDir"
-Write-Host "Portable exe:       $rootExe"
-Write-Host "Launcher:           $launchBat"
-Write-Host "Desktop shortcut:   $desktopShortcut"
+Write-Host ("Install folder:     " + $TargetDir)
+Write-Host ("Portable exe:       " + $rootExe)
+Write-Host ("Launcher:           " + $launchBat)
+Write-Host ("Desktop shortcut:   " + $desktopShortcut)
 if ($startupShortcut) {
-    Write-Host "Launch on boot:     $startupShortcut"
+    Write-Host ("Launch on boot:     " + $startupShortcut)
 }
 Write-Host ""
 Write-Host "The app will start automatically when this Windows user logs in." -ForegroundColor Yellow
-Write-Host "(Windows uses a Startup shortcut; .plist files are for macOS.)" -ForegroundColor Yellow
 
 if (-not $SkipLaunch) {
     Write-Step "Launching app"
