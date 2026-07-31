@@ -15,7 +15,7 @@ const path = require('path')
 const fs = require('fs')
 
 const DEFAULT_KIOSK_URL =
-  'https://cdn.vixisuite.thefamousgroup.com/go/kiosk/794f74e0?code=uifizkeqdKIMQQUe'
+  'https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW'
 const pageUrl = process.env.URL || DEFAULT_KIOSK_URL
 
 // Where downloads land. Mirrors the Chrome download policy written by

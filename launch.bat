@@ -6,5 +6,5 @@ taskkill /F /IM DreamGenerator.exe /T >nul 2>&1
 taskkill /F /IM "Dream Generator.exe" /T >nul 2>&1
 timeout /t 3 /nobreak >nul
 
-set "URL=https://cdn.vixisuite.thefamousgroup.com/go/kiosk/794f74e0?code=uifizkeqdKIMQQUe"
+set "URL=https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW"
 start "" "C:\Dream Generator\DreamGenerator.exe"
