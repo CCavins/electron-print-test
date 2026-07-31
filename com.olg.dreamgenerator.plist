@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS LaunchAgent — starts Dream Generator at login.
+
+  Windows machines do NOT use this file. On Windows, bootstrap-windows.ps1
+  installs a Startup-folder shortcut instead (same role as RunAtLoad).
+
+  macOS install:
+    1. Build/install the app (e.g. to /Applications/Dream Generator.app)
+    2. Edit the URL string below
+    3. cp com.olg.dreamgenerator.plist ~/Library/LaunchAgents/
+    4. launchctl load ~/Library/LaunchAgents/com.olg.dreamgenerator.plist
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.olg.dreamgenerator</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Applications/Dream Generator.app/Contents/MacOS/Dream Generator</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>URL</key>
+      <string>https://cdn.vixisuite.thefamousgroup.com/go/kiosk/794f74e0?code=uifizkeqdKIMQQUe</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/tmp/dream-generator.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dream-generator.err</string>
+  </dict>
+</plist>

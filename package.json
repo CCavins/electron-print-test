@@ -1,13 +1,67 @@
 {
-  "name": "olg-electron-kiosk",
-  "version": "1.0.0",
-  "description": "Fullscreen Electron kiosk for Vixi Dream Generator",
+  "name": "olg-kiosk-shell",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Experimental Electron shell for the OLG Dream Generator kiosk",
   "main": "main.js",
+  "author": "OLG",
+  "license": "UNLICENSED",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:dir": "electron-builder --dir"
   },
   "devDependencies": {
-    "electron": "^37.2.0"
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.olg.dreamgenerator",
+    "productName": "Dream Generator",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${os}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Dream Generator"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "category": "public.app-category.entertainment",
+      "identity": null,
+      "artifactName": "${productName}-${version}-${os}.${ext}"
+    }
   }
 }

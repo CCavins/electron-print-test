@@ -1,175 +1,96 @@
-const { app, BrowserWindow, ipcMain, session } = require("electron");
-const fs = require("fs");
-const path = require("path");
+// Experimental Electron shell for the kiosk. The Chrome --kiosk path in
+// launch/ is still the deployed setup (see ../README.md "Why no Electron");
+// this shell exists for when we need hard-enforced download destinations
+// instead of Chrome download policies.
+//
+// Run with:
+//   npm start
+//   URL=https://... npm start   (optional override)
+//
+// Optional env:
+//   DOWNLOAD_DIR  where dreams are saved (default: Desktop\Dreams, matching setup-kiosk.ps1)
+//   WINDOWED=1    normal resizable window instead of kiosk fullscreen, for local testing
+const { app, BrowserWindow, ipcMain } = require('electron')
+const path = require('path')
+const fs = require('fs')
 
-const KIOSK_URL =
-  "https://api.vixisuite-staging.thefamousgroup.com/go/i/EGfoK5oc26htkfnW";
+const DEFAULT_KIOSK_URL =
+  'https://cdn.vixisuite.thefamousgroup.com/go/kiosk/794f74e0?code=uifizkeqdKIMQQUe'
+const pageUrl = process.env.URL || DEFAULT_KIOSK_URL
 
-/** @type {Map<string, string>} */
-const pendingFilenames = new Map();
-
-function getPrintsDir() {
-  return path.join(app.getPath("desktop"), "Dreams", "Prints");
+// Where downloads land. Mirrors the Chrome download policy written by
+// setup-kiosk.ps1: Desktop\Dreams unless DOWNLOAD_DIR overrides it.
+function resolveDownloadDir() {
+  return process.env.DOWNLOAD_DIR || path.join(app.getPath('desktop'), 'Dreams')
 }
 
-function ensurePrintsDir() {
-  const printsDir = getPrintsDir();
-  fs.mkdirSync(printsDir, { recursive: true });
-  return printsDir;
+// The download item reports the MIME type the server actually sent; used to
+// pick an extension when the renderer passes a bare filename without one.
+function extFromMimeType(mimeType) {
+  if (!mimeType) return 'jpg'
+  if (mimeType.includes('png')) return 'png'
+  if (mimeType.includes('webp')) return 'webp'
+  return 'jpg'
 }
 
-function uniqueSavePath(dir, filename) {
-  const ext = path.extname(filename);
-  const base = path.basename(filename, ext) || "dream";
-  let candidate = path.join(dir, `${base}${ext}`);
-  let n = 1;
-
-  while (fs.existsSync(candidate)) {
-    candidate = path.join(dir, `${base}-${n}${ext}`);
-    n += 1;
-  }
-
-  return candidate;
-}
+let mainWindow
 
 function createWindow() {
-  const win = new BrowserWindow({
-    fullscreen: true,
+  const windowed = process.env.WINDOWED === '1'
+  mainWindow = new BrowserWindow({
+    kiosk: !windowed,
+    width: 1280,
+    height: 800,
     autoHideMenuBar: true,
-    backgroundColor: "#000000",
+    backgroundColor: '#000000',
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
-  });
+  })
 
-  win.setMenuBarVisibility(false);
-  win.loadURL(KIOSK_URL);
-
-  // Bridge page events → electronAPI.triggerDownload
-  win.webContents.on("dom-ready", () => {
-    win.webContents.executeJavaScript(`
-      (() => {
-        if (window.__dreamDownloadBridgeInstalled) return;
-        window.__dreamDownloadBridgeInstalled = true;
-
-        function handleDownloadRequest(detail) {
-          if (!detail || !detail.url || !window.electronAPI?.triggerDownload) return;
-          const filename = detail.filename || ('dream-' + Date.now() + '.png');
-          window.electronAPI.triggerDownload(detail.url, filename);
-        }
-
-        // CustomEvent: window.dispatchEvent(new CustomEvent('download-file', { detail: { url, filename } }))
-        window.addEventListener('download-file', (event) => {
-          handleDownloadRequest(event.detail || {});
-        });
-
-        // postMessage: window.postMessage({ type: 'download-file', url, filename }, '*')
-        window.addEventListener('message', (event) => {
-          const data = event.data;
-          if (!data || data.type !== 'download-file') return;
-          handleDownloadRequest(data);
-        });
-
-        // Intercept <a download> clicks so the page's normal save path uses IPC
-        document.addEventListener('click', (event) => {
-          const anchor = event.target?.closest?.('a[download]');
-          if (!anchor || !anchor.href) return;
-          event.preventDefault();
-          event.stopPropagation();
-          handleDownloadRequest({
-            url: anchor.href,
-            filename: anchor.download || undefined,
-          });
-        }, true);
-      })();
-    `).catch((err) => {
-      console.error("Failed to install download bridge:", err);
-    });
-  });
-
-  // Escape exits fullscreen (handy for development)
-  win.webContents.on("before-input-event", (_event, input) => {
-    if (input.type === "keyDown" && input.key === "Escape") {
-      win.setFullScreen(false);
-    }
-  });
-
-  return win;
+  mainWindow.loadURL(pageUrl)
 }
 
+// Renderer hands us the asset URL + desired filename (see preload.js); the
+// main process downloads it natively and saves into the Dreams folder with no
+// Save-As prompt. Resolves with the saved path so the page's await/retry
+// logic (one-shot print button) keeps working; rejects on any failure.
+ipcMain.handle('download-file', (event, { url, filename }) => {
+  const contents = event.sender
+  const downloadDir = resolveDownloadDir()
+  fs.mkdirSync(downloadDir, { recursive: true })
+
+  return new Promise((resolve, reject) => {
+    const onWillDownload = (_event, item) => {
+      clearTimeout(startTimer)
+      // basename() so a buggy filename can't escape the Dreams folder.
+      let safeName = path.basename(String(filename || 'dream'))
+      if (!path.extname(safeName)) safeName += `.${extFromMimeType(item.getMimeType())}`
+      const savePath = path.join(downloadDir, safeName)
+      item.setSavePath(savePath)
+
+      item.once('done', (_doneEvent, state) => {
+        if (state === 'completed') resolve({ path: savePath })
+        else reject(new Error(`Download ${state}`))
+      })
+    }
+
+    // If the download never starts (dead URL, blocked scheme), fail instead
+    // of leaving the renderer's await — and the print button — hanging.
+    const startTimer = setTimeout(() => {
+      contents.session.removeListener('will-download', onWillDownload)
+      reject(new Error('Download did not start within 30s'))
+    }, 30_000)
+
+    contents.session.once('will-download', onWillDownload)
+    contents.downloadURL(url)
+  })
+})
+
 app.whenReady().then(() => {
-  const printsDir = ensurePrintsDir();
+  createWindow()
+})
 
-  // Configure save path whenever Electron starts a download (incl. downloadURL)
-  session.defaultSession.on("will-download", (_event, item, webContents) => {
-    const url = item.getURL();
-    const filename =
-      pendingFilenames.get(url) ||
-      item.getFilename() ||
-      `dream-${Date.now()}.png`;
-    pendingFilenames.delete(url);
-
-    const savePath = uniqueSavePath(printsDir, filename);
-    item.setSavePath(savePath);
-
-    item.on("updated", (_updateEvent, state) => {
-      if (state === "interrupted") {
-        console.log("Download interrupted:", filename);
-      } else if (state === "progressing" && !item.isPaused()) {
-        console.log(
-          `Downloading ${filename}: ${item.getReceivedBytes()} / ${item.getTotalBytes()}`
-        );
-      }
-    });
-
-    item.once("done", (_doneEvent, state) => {
-      const win = BrowserWindow.fromWebContents(webContents);
-      if (state === "completed") {
-        console.log("Download successfully saved to:", savePath);
-        win?.webContents.send("download-status", {
-          status: "success",
-          path: savePath,
-        });
-      } else {
-        console.error(`Download failed: ${state}`);
-        win?.webContents.send("download-status", {
-          status: "failed",
-          reason: state,
-        });
-      }
-    });
-  });
-
-  // Handle download IPC event from preload / page bridge
-  ipcMain.on("download-file", (event, { url, filename } = {}) => {
-    if (!url) {
-      console.error("download-file missing url");
-      return;
-    }
-
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return;
-
-    const safeName = filename || `dream-${Date.now()}.png`;
-    pendingFilenames.set(url, safeName);
-
-    // Trigger Electron's native download manager
-    win.webContents.downloadURL(url);
-  });
-
-  createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
+app.on('window-all-closed', () => app.quit())
