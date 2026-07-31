@@ -1,0 +1,13 @@
+{
+  "name": "olg-electron-kiosk",
+  "version": "1.0.0",
+  "description": "Fullscreen Electron kiosk for Vixi Dream Generator",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^37.2.0"
+  }
+}
