@@ -6,7 +6,7 @@ An alternative to the Chrome `--kiosk` setup in the parent directory (see [../RE
 
 - `main.js` opens the kiosk URL fullscreen (`kiosk: true`) with `preload.js` injected.
 - `preload.js` exposes `window.electronAPI.triggerDownload(url, filename)` to the page.
-- The OLG kiosk page (`components/kiosk_apps/KioskOLG.vue`) detects `window.electronAPI` and hands the dream URL to the shell instead of doing an anchor-click browser download. The main process downloads it natively straight into the Dreams folder — no Save-As prompt, no Chrome policy needed.
+- The OLG kiosk page (`components/kiosk_apps/KioskOLG.vue`) detects `window.electronAPI` and hands the dream URL to the shell instead of doing an anchor-click browser download. The main process downloads it natively straight into `Desktop\Dreams\Prints` — no Save-As prompt, no Chrome policy needed.
 - `filename` may omit the extension; the shell appends one from the MIME type the server sent.
 - In a plain browser (`window.electronAPI` absent) the page falls back to the existing blob + anchor download, so nothing changes for the deployed Chrome kiosks.
 
@@ -27,7 +27,7 @@ Environment variables:
 | Var | Default | Purpose |
 |---|---|---|
 | `URL` | production kiosk URL above | Optional override for the page to load. |
-| `DOWNLOAD_DIR` | `Desktop\Dreams` | Where dreams are saved. Default matches `setup-kiosk.ps1`'s Chrome policy. |
+| `DOWNLOAD_DIR` | `Desktop\Dreams\Prints` | Where dreams are saved. |
 | `WINDOWED` | unset | Set to `1` for a normal resizable window instead of kiosk fullscreen (local testing). |
 
 ## Windows: one-shot bootstrap (recommended)

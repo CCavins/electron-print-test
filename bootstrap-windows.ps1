@@ -188,6 +188,11 @@ function Build-App {
 function New-LaunchScript {
     param([string]$ExePath)
 
+    $resolvedDownloadDir = $DownloadDir
+    if (-not $resolvedDownloadDir) {
+        $resolvedDownloadDir = Join-Path ([Environment]::GetFolderPath("Desktop")) "Dreams\Prints"
+    }
+
     $launchBat = Join-Path $TargetDir "launch.bat"
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add("@echo off")
@@ -197,9 +202,7 @@ function New-LaunchScript {
     $lines.Add('taskkill /F /IM "Dream Generator.exe" /T >nul 2>&1')
     $lines.Add("timeout /t 3 /nobreak >nul")
     $lines.Add(('set "URL=' + $Url + '"'))
-    if ($DownloadDir) {
-        $lines.Add(('set "DOWNLOAD_DIR=' + $DownloadDir + '"'))
-    }
+    $lines.Add(('set "DOWNLOAD_DIR=' + $resolvedDownloadDir + '"'))
     if ($Windowed) {
         $lines.Add('set "WINDOWED=1"')
     }

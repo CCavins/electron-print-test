@@ -8,7 +8,7 @@
 //   URL=https://... npm start   (optional override)
 //
 // Optional env:
-//   DOWNLOAD_DIR  where dreams are saved (default: Desktop\Dreams, matching setup-kiosk.ps1)
+//   DOWNLOAD_DIR  where dreams are saved (default: Desktop\Dreams\Prints)
 //   WINDOWED=1    normal resizable window instead of kiosk fullscreen, for local testing
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
@@ -18,10 +18,9 @@ const DEFAULT_KIOSK_URL =
   'https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW'
 const pageUrl = process.env.URL || DEFAULT_KIOSK_URL
 
-// Where downloads land. Mirrors the Chrome download policy written by
-// setup-kiosk.ps1: Desktop\Dreams unless DOWNLOAD_DIR overrides it.
+// Where downloads land: Desktop\Dreams\Prints unless DOWNLOAD_DIR overrides it.
 function resolveDownloadDir() {
-  return process.env.DOWNLOAD_DIR || path.join(app.getPath('desktop'), 'Dreams')
+  return process.env.DOWNLOAD_DIR || path.join(app.getPath('desktop'), 'Dreams', 'Prints')
 }
 
 // The download item reports the MIME type the server actually sent; used to
@@ -54,8 +53,8 @@ function createWindow() {
 }
 
 // Renderer hands us the asset URL + desired filename (see preload.js); the
-// main process downloads it natively and saves into the Dreams folder with no
-// Save-As prompt. Resolves with the saved path so the page's await/retry
+// main process downloads it natively and saves into Desktop\Dreams\Prints with
+// no Save-As prompt. Resolves with the saved path so the page's await/retry
 // logic (one-shot print button) keeps working; rejects on any failure.
 ipcMain.handle('download-file', (event, { url, filename }) => {
   const contents = event.sender
@@ -65,7 +64,7 @@ ipcMain.handle('download-file', (event, { url, filename }) => {
   return new Promise((resolve, reject) => {
     const onWillDownload = (_event, item) => {
       clearTimeout(startTimer)
-      // basename() so a buggy filename can't escape the Dreams folder.
+      // basename() so a buggy filename can't escape the download folder.
       let safeName = path.basename(String(filename || 'dream'))
       if (!path.extname(safeName)) safeName += `.${extFromMimeType(item.getMimeType())}`
       const savePath = path.join(downloadDir, safeName)
