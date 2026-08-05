@@ -15,7 +15,7 @@ const path = require('path')
 const fs = require('fs')
 
 const DEFAULT_KIOSK_URL =
-  'https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW'
+  'https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe'
 const pageUrl = process.env.URL || DEFAULT_KIOSK_URL
 
 // Where downloads land: Desktop\Dreams\Prints\s4x6 unless DOWNLOAD_DIR overrides it.

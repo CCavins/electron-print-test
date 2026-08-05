@@ -12,7 +12,7 @@ REM   bootstrap-windows.bat "https://override-url"
 set "SCRIPT_DIR=%~dp0"
 set "PS1=%SCRIPT_DIR%bootstrap-windows.ps1"
 set "URL_ARG=%~1"
-set "DEFAULT_URL=https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW"
+set "DEFAULT_URL=https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe"
 set "RAW_PS1=https://raw.githubusercontent.com/CCavins/electron-print-test/main/bootstrap-windows.ps1"
 
 if not "%URL_ARG%"=="" (

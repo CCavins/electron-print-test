@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
 if (-not $env:URL) {
-    $env:URL = "https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW"
+    $env:URL = "https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe"
 }
 
 function Test-NodeInstalled {

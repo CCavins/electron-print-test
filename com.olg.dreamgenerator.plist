@@ -23,7 +23,7 @@
     <key>EnvironmentVariables</key>
     <dict>
       <key>URL</key>
-      <string>https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW</string>
+      <string>https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>

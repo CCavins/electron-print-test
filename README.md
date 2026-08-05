@@ -20,7 +20,7 @@ npm start
 
 Default kiosk URL:
 
-`https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW`
+`https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe`
 
 Environment variables:
 

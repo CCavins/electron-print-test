@@ -14,6 +14,6 @@ if errorlevel 1 (
 
 timeout /t 30 /nobreak >nul
 
-set "URL=https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW"
+set "URL=https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe"
 set "DOWNLOAD_DIR=%USERPROFILE%\Desktop\Dreams\Prints\s4x6"
 start "" "C:\Dream Generator\DreamGenerator.exe"

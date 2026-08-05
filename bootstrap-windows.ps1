@@ -37,7 +37,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$DefaultKioskUrl = "https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW"
+$DefaultKioskUrl = "https://api.vixisuite.thefamousgroup.com/go/i/uifizkeqdKIMQQUe"
 
 function Write-Step {
     param([string]$Message)
