@@ -190,7 +190,7 @@ function New-LaunchScript {
 
     $resolvedDownloadDir = $DownloadDir
     if (-not $resolvedDownloadDir) {
-        $resolvedDownloadDir = Join-Path ([Environment]::GetFolderPath("Desktop")) "Dreams\Prints"
+        $resolvedDownloadDir = Join-Path ([Environment]::GetFolderPath("Desktop")) "Dreams\Prints\s4x6"
     }
 
     $launchBat = Join-Path $TargetDir "launch.bat"

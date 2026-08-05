@@ -6,7 +6,7 @@
 #   setup-windows.bat
 #
 # Optional:
-#   DOWNLOAD_DIR  (default: Desktop\Dreams\Prints)
+#   DOWNLOAD_DIR  (default: Desktop\Dreams\Prints\s4x6)
 #   WINDOWED=1    (normal window instead of kiosk)
 
 $ErrorActionPreference = "Stop"

@@ -8,7 +8,7 @@
 //   URL=https://... npm start   (optional override)
 //
 // Optional env:
-//   DOWNLOAD_DIR  where dreams are saved (default: Desktop\Dreams\Prints)
+//   DOWNLOAD_DIR  where dreams are saved (default: Desktop\Dreams\Prints\s4x6)
 //   WINDOWED=1    normal resizable window instead of kiosk fullscreen, for local testing
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
@@ -18,9 +18,9 @@ const DEFAULT_KIOSK_URL =
   'https://cdn.vixisuite-staging.thefamousgroup.com/go/kiosk/9406cdab?code=EGfoK5oc26htkfnW'
 const pageUrl = process.env.URL || DEFAULT_KIOSK_URL
 
-// Where downloads land: Desktop\Dreams\Prints unless DOWNLOAD_DIR overrides it.
+// Where downloads land: Desktop\Dreams\Prints\s4x6 unless DOWNLOAD_DIR overrides it.
 function resolveDownloadDir() {
-  return process.env.DOWNLOAD_DIR || path.join(app.getPath('desktop'), 'Dreams', 'Prints')
+  return process.env.DOWNLOAD_DIR || path.join(app.getPath('desktop'), 'Dreams', 'Prints', 's4x6')
 }
 
 // The download item reports the MIME type the server actually sent; used to
@@ -53,7 +53,7 @@ function createWindow() {
 }
 
 // Renderer hands us the asset URL + desired filename (see preload.js); the
-// main process downloads it natively and saves into Desktop\Dreams\Prints with
+// main process downloads it natively and saves into Desktop\Dreams\Prints\s4x6 with
 // no Save-As prompt. Resolves with the saved path so the page's await/retry
 // logic (one-shot print button) keeps working; rejects on any failure.
 ipcMain.handle('download-file', (event, { url, filename }) => {
